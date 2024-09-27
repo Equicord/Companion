@@ -17,11 +17,11 @@ export function activate(context: ExtensionContext) {
 
 	context.subscriptions.push(
 		languages.registerCodeLensProvider(
-			{ pattern: "**/{plugins,userplugins,plugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
+			{ pattern: "**/{plugins,userplugins,equicordplugins,plugins/_*,equicordplugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
 			new PluginDefCodeLensProvider()
 		),
 		languages.registerCodeLensProvider(
-			{ pattern: "**/{plugins,userplugins,plugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
+			{ pattern: "**/{plugins,userplugins,equicordplugins,plugins/_*,equicordplugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
 			new PatchCodeLensProvider()
 		),
 		languages.registerDefinitionProvider({ language: "javascript" }, new DefinitionProvider),
