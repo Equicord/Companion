@@ -21,6 +21,14 @@
 
 - Now also supports plugin definitions stored in variables, like `const p: PluginDef = { ... }`
 
+# 0.1.4
+
+-  Minor Updates & Bug Fixes aswell as support for the equicordplugins dir
+
+# 0.1.5
+
+- More Minor Updates & Bug Fixes
+
 # 0.2.0
 
 TODO: write notes
