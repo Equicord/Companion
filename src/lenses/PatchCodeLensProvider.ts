@@ -32,7 +32,7 @@ import {
 } from "./helpers";
 
 function parseFind(patch: ObjectLiteralExpression) {
-  const find = patch.properties.find((p) => hasName(p, "find"));
+  const find = patch.properties.find(p => hasName(p, "find"));
   if (!find || !isPropertyAssignment(find)) return null;
   if (
     !(
@@ -62,7 +62,7 @@ function parseReplacement(
   document: TextDocument,
   patch: ObjectLiteralExpression,
 ) {
-  const replacementObj = patch.properties.find((p) =>
+  const replacementObj = patch.properties.find(p =>
     hasName(p, "replacement"),
   );
 
@@ -77,8 +77,8 @@ function parseReplacement(
 
   const replacementValues = (replacements as ObjectLiteralExpression[])
     .map((r: ObjectLiteralExpression) => {
-      const match = r.properties.find((p) => hasName(p, "match"));
-      const replace = r.properties.find((p) => hasName(p, "replace"));
+      const match = r.properties.find(p => hasName(p, "match"));
+      const replace = r.properties.find(p => hasName(p, "replace"));
 
       if (
         !replace ||
@@ -199,7 +199,7 @@ function parsePossiblePatches(
 
   if (!isObjectLiteralExpression(pluginObj)) return ParseResult.INVALID;
 
-  const patchesObj = pluginObj.properties.find((p) => hasName(p, "patches"));
+  const patchesObj = pluginObj.properties.find(p => hasName(p, "patches"));
   if (!patchesObj) return ParseResult.INVALID;
 
   const patchesArray = isPropertyAssignment(patchesObj)

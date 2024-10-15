@@ -37,7 +37,7 @@ export async function sendToSockets(
 
   const promises = Array.from(
     sockets,
-    (sock) =>
+    sock =>
       new Promise<void>((resolve, reject) => {
         const onMessage = (data: RawData) => {
           const msg = data.toString("utf-8");
@@ -120,7 +120,7 @@ export function startWebSocketServer() {
       sockets.delete(sock);
     });
 
-    sock.on("message", async (msg) => {
+    sock.on("message", async msg => {
       try {
         const rec = JSON.parse(msg.toString());
         switch (rec.type) {
@@ -157,11 +157,11 @@ export function startWebSocketServer() {
               .openTextDocument({
                 content: await format(
                   data.data ||
-                    "//ERROR: NO DATA RECIVED\n//This module may be lazy loaded",
+                  "//ERROR: NO DATA RECIVED\n//This module may be lazy loaded",
                 ),
                 language: "javascript",
               })
-              .then((e) => {
+              .then(e => {
                 commands.executeCommand("vscode.open", e.uri);
               });
             break;
@@ -179,7 +179,7 @@ export function startWebSocketServer() {
       }
     });
 
-    sock.on("error", (err) => {
+    sock.on("error", err => {
       console.error("[Equicord Companion WS", err);
       outputChannel.appendLine(`[WS] Error: ${err}`);
     });
@@ -194,7 +194,7 @@ export function startWebSocketServer() {
     console.log(sock);
   });
 
-  wss.on("error", (err) => {
+  wss.on("error", err => {
     console.error("[Equicord Companion WS", err);
     outputChannel.appendLine(`[WS] Error: ${err}`);
   });

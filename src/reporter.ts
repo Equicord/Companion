@@ -27,7 +27,7 @@ export async function startReporter() {
 
     await tasks.executeTask(task);
     // cant find a way to await the vscode task finish
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1000));
     await sendToSockets({
       type: "reload",
       data: undefined,
@@ -46,7 +46,7 @@ export async function handleAfterRecive(data: ReporterData) {
 
     await tasks.executeTask(task);
     // cant find a way to await the vscode task finish
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 1000));
     await sendToSockets({
       type: "reload",
       data: undefined,
@@ -58,7 +58,7 @@ export async function handleAfterRecive(data: ReporterData) {
 }
 async function getNormalBuildTask() {
   const task = (await tasks.fetchTasks()).filter(
-    (t) =>
+    t =>
       t.execution instanceof ShellExecution &&
       t.execution.commandLine?.includes("build") &&
       t.execution.commandLine?.includes("--dev") &&
@@ -70,7 +70,7 @@ async function getNormalBuildTask() {
 }
 async function getReporterTask() {
   const task = (await tasks.fetchTasks()).filter(
-    (t) =>
+    t =>
       t.execution instanceof ShellExecution &&
       String(t.execution.commandLine).includes("--companion-test"),
   );
@@ -84,5 +84,5 @@ async function getReporterTask() {
  */
 function ensureOnlyTask() {
   if (tasks.taskExecutions.length === 0) return;
-  tasks.taskExecutions.forEach((t) => t.terminate());
+  tasks.taskExecutions.forEach(t => t.terminate());
 }

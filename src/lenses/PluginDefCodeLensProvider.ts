@@ -38,16 +38,16 @@ function parseObjLiteralExpr<T extends readonly string[]>(
     isSerialziable(node.initializer);
     toRet[node.name.text] = node.initializer.text;
   }
-  if (search.some((v) => !toRet[v]))
+  if (search.some(v => !toRet[v]))
     throw new Error("Not all search values found");
   return toRet as any;
 }
 function parsePossiblePatches(node: Node):
   | {
-      posStart: number;
-      posEnd: number;
-      pluginName: string;
-    }
+    posStart: number;
+    posEnd: number;
+    pluginName: string;
+  }
   | ParseResult {
   if (!isExportAssignment(node)) return ParseResult.NOT_FOUND;
   if (!isCallExpression(node.expression)) return ParseResult.NOT_FOUND;

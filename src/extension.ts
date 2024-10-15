@@ -73,7 +73,7 @@ export function activate(context: ExtensionContext) {
         return newLocal.toString();
       },
     }),
-    commands.registerCommand("equicord-companion.diffModule", async (args) => {
+    commands.registerCommand("equicord-companion.diffModule", async args => {
       if (args)
         return sendToSockets({
           type: "diff",
@@ -81,14 +81,14 @@ export function activate(context: ExtensionContext) {
             extractType: "id",
             idOrSearch: args,
           },
-        }).catch((e) => window.showErrorMessage(String(e)));
+        }).catch(e => window.showErrorMessage(String(e)));
       const quickPick = window.createQuickPick();
       quickPick.placeholder = "module ID";
       quickPick.canSelectMany = false;
       const items: QuickPickItem[] = [
         { label: "", alwaysShow: false },
         { label: "", kind: -1 },
-        ...moduleCache.map((m) => ({ label: m })),
+        ...moduleCache.map(m => ({ label: m })),
       ];
       quickPick.items = items;
       quickPick.onDidChangeValue(() => {
@@ -130,7 +130,7 @@ export function activate(context: ExtensionContext) {
               findType,
               idOrSearch: args,
             },
-          }).catch((e) => window.showErrorMessage(String(e)));
+          }).catch(e => window.showErrorMessage(String(e)));
         const input = await window.showInputBox();
         if (!input) return window.showErrorMessage("No Input Provided");
         try {
@@ -164,7 +164,7 @@ export function activate(context: ExtensionContext) {
             findType: args.data.type,
             findArgs: args.data.args,
           },
-        }).catch((e) => window.showErrorMessage(String(e)));
+        }).catch(e => window.showErrorMessage(String(e)));
       },
     ),
     commands.registerCommand(
@@ -177,14 +177,14 @@ export function activate(context: ExtensionContext) {
               extractType: "id",
               idOrSearch: args,
             },
-          }).catch((e) => window.showErrorMessage(String(e)));
+          }).catch(e => window.showErrorMessage(String(e)));
         const quickPick = window.createQuickPick();
         quickPick.placeholder = "module ID";
         quickPick.canSelectMany = false;
         const items: QuickPickItem[] = [
           { label: "", alwaysShow: false },
           { label: "", kind: -1 },
-          ...moduleCache.map((m) => {
+          ...moduleCache.map(m => {
             return { label: m };
           }),
         ];
@@ -229,7 +229,7 @@ export function activate(context: ExtensionContext) {
               findType,
               idOrSearch: args,
             },
-          }).catch((e) => window.showErrorMessage(String(e)));
+          }).catch(e => window.showErrorMessage(String(e)));
         const input = await window.showInputBox();
         if (!input) return window.showErrorMessage("No Input Provided");
         try {
@@ -248,7 +248,7 @@ export function activate(context: ExtensionContext) {
     ),
     commands.registerCommand(
       "equicord-companion.disablePlugin",
-      async (data) => {
+      async data => {
         try {
           if (!data) throw new Error("No args passed.");
           await sendToSockets({

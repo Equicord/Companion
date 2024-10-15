@@ -9,8 +9,7 @@ import {
 } from "vscode";
 
 export default class PartialModuleJumpCodeLensProvider
-  implements CodeLensProvider
-{
+  implements CodeLensProvider {
   provideCodeLenses(
     document: TextDocument,
     token: CancellationToken,

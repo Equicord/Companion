@@ -25,8 +25,8 @@ export const WebpackCodeLensProvider: CodeLensProvider = {
 
     const finds = match[1]
       .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.startsWith("find"));
+      .map(s => s.trim())
+      .filter(s => s.startsWith("find"));
 
     if (!finds.length) return [];
 
@@ -45,7 +45,7 @@ export const WebpackCodeLensProvider: CodeLensProvider = {
         finds.includes((type = node.expression.getText()))
       ) {
         const args = node.arguments.map(
-          (a) =>
+          a =>
             tryParseStringLiteral(a) ??
             tryParseRegularExpressionLiteral(a) ??
             tryParseFunction(document, a),
