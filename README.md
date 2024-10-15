@@ -7,11 +7,8 @@ Equicord Companion is a vscode extension to test Equicord patches & webpack find
 
 To use it you also need to compile Equicord with DEV (aka `pnpm build --watch` or `pnpm buildWeb --watch`) and enable the  "DevCompanion" plugin. Then just start Discord
 
-<!--   [Download on the vscode marketplace](https://marketplace.visualstudio.com/items?itemName=thororen.equicord-companion) -->
+[Download on the vscode marketplace](https://marketplace.visualstudio.com/items?itemName=thororen.equicord-companion)
 
-![image](https://user-images.githubusercontent.com/45497981/224365555-60e968a1-d2d0-4aee-b29b-e5714273682c.png)
+![image](https://github.com/user-attachments/assets/d11bd60a-daca-4393-9210-542ddbee1665)
 
-![image](https://user-images.githubusercontent.com/45497981/224377149-b1569eac-9411-4f55-849a-950ba5b06f37.png)
-
-
-https://user-images.githubusercontent.com/45497981/224446924-6e272d78-2c30-41a2-a41e-f71286b5f220.mp4
+![image](https://github.com/user-attachments/assets/204aef0d-74a8-4cac-8876-24fed51e7df2)
