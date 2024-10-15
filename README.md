@@ -4,6 +4,8 @@ Equicord Companion is a vscode extension to test Equicord patches & webpack find
 
 - Adds "Test Find" on any webpack finds that will test whether your filter finds exactly one module (and not more or none)
 - Adds "Test Patch" on any patches you define in definePlugin() that will test that your find is unique and your match and replace works and compiles correctly
+- Adds "View Module" on any patches you define in definePlugin() that will show you the module you are trying to patch
+- Adds "Diff Module" on any patches you define in definePlugin() that will show you the module unpatched & patched
 
 To use it you also need to be using Equicord and enable the  "DevCompanion" plugin. Then just start Discord
 
