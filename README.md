@@ -14,3 +14,5 @@ For custom building the companion you need the vsix. We recommend the marketplac
 ![image](https://github.com/user-attachments/assets/d11bd60a-daca-4393-9210-542ddbee1665)
 
 ![image](https://github.com/user-attachments/assets/204aef0d-74a8-4cac-8876-24fed51e7df2)
+
+Thanks for looking here!
