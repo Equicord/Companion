@@ -6,12 +6,13 @@ import * as vscode from "vscode";
 
 import { extensionPath, extensionUri } from "./extension";
 import format from "./format";
+import { mkStringUri, sendToSockets } from "./server/webSocketServer";
 import { EvaledPatch, ReporterData, WebviewMessage } from "./types";
-import { mkStringUri, sendToSockets } from "./webSocketServer";
 
 type Patch = { patch: EvaledPatch };
 type PluginName = { pluginName: string };
-type Diff = { oldModule: string; newModule: string };
+type Diff = { oldModule: string, newModule: string };
+// TODO: add persistant state
 export class ReporterPanel {
   /**
    * Track the currently panel. Only allow a single panel to exist at a time.
@@ -26,9 +27,7 @@ export class ReporterPanel {
   private _disposables: vscode.Disposable[] = [];
 
   public static createOrShow(data: ReporterData) {
-    const column = vscode.window.activeTextEditor
-      ? vscode.window.activeTextEditor.viewColumn
-      : undefined;
+    const column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
 
     // If we already have a panel, show it.
     // Otherwise, create a new panel.
@@ -36,35 +35,24 @@ export class ReporterPanel {
     if (ReporterPanel.currentPanel && !data) {
       ReporterPanel.currentPanel._panel.reveal(column);
     } else {
-      ReporterPanel.currentPanel = new ReporterPanel(
-        extensionUri,
-        column || vscode.ViewColumn.One,
-        data,
-      );
+      ReporterPanel.currentPanel = new ReporterPanel(extensionUri, column || vscode.ViewColumn.One, data);
     }
   }
 
-  private constructor(
-    extensionUri: vscode.Uri,
-    column: vscode.ViewColumn,
-    data: ReporterData,
-  ) {
+  private constructor(extensionUri: vscode.Uri, column: vscode.ViewColumn, data: ReporterData) {
     this._extensionUri = extensionUri;
     this._extensionPath = extensionPath;
 
     // Create and show a new webview panel
-    this._panel = vscode.window.createWebviewPanel(
-      ReporterPanel.viewType,
-      "Equicord Reporter",
-      column,
-      {
-        // Enable javascript in the webview
-        enableScripts: true,
+    this._panel = vscode.window.createWebviewPanel(ReporterPanel.viewType, "Equicord Reporter", column, {
+      // Enable javascript in the webview
+      enableScripts: true,
 
-        // And restric the webview to only loading content from our extension's `media` directory.
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "dist/webview")],
-      },
-    );
+      // And restric the webview to only loading content from our extension's `media` directory.
+      localResourceRoots: [
+        vscode.Uri.joinPath(extensionUri, "dist/webview")
+      ]
+    });
 
     // Set the webview's initial html content
     this._panel.webview.html = this._getHtmlForWebview(data);
@@ -74,76 +62,57 @@ export class ReporterPanel {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
     // Handle messages from the webview
-    this._panel.webview.onDidReceiveMessage(
-      async (message: WebviewMessage) => {
-        try {
-          switch (message.type) {
-            case "disable": {
-              const { pluginName, enabled }: PluginName & { enabled: boolean } =
-                message.data;
-              // DISABLE PLUGIN
-              await sendToSockets({
-                type: "disable",
-                data: {
-                  pluginName,
-                  enabled,
-                },
-              });
-              break;
-            }
-            case "jumpToPatch": {
-              const { pluginName, patch }: Patch & PluginName = message.data;
-              // any attempt to get this to open without user interaction is a complete shitshow
-              // just use the builtin fuzzy finder and the patch find
-              // while there might be more than one find, the user can deal with that
-              vscode.commands.executeCommand(
-                "workbench.action.quickOpen",
-                "%" + patch.find,
-              );
-              break;
-            }
-            case "extract": {
-              const { patch }: Patch = message.data;
-              vscode.commands.executeCommand(
-                "equicord-companion.extract",
-                +patch.id,
-              );
-              break;
-            }
-            case "diff": {
-              const { oldModule, newModule, id }: Diff & EvaledPatch =
-                message.data;
-              // we cant format code with syntax errors
-              let sourceUri, patchedUri;
-              try {
-                sourceUri = mkStringUri(await format(oldModule));
-                patchedUri = mkStringUri(await format(newModule));
-              } catch (error) {
-                sourceUri = mkStringUri(oldModule);
-                patchedUri = mkStringUri(newModule);
+    this._panel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
+      try {
+        switch (message.type) {
+          case "disable": {
+            const { pluginName, enabled }: PluginName & { enabled: boolean } = message.data;
+            // DISABLE PLUGIN
+            await sendToSockets({
+              type: "disable",
+              data: {
+                pluginName,
+                enabled
               }
-              vscode.commands.executeCommand(
-                "vscode.diff",
-                sourceUri,
-                patchedUri,
-                "Patch Diff: " + id,
-              );
-              break;
-            }
-            default: {
-              vscode.window.showErrorMessage(
-                "Unknown message type from webview, got : " + message.type,
-              );
-              break;
-            }
+            });
+            break;
           }
-        } catch (error) {
-          vscode.window.showErrorMessage(String(error));
+          case "jumpToPatch": {
+            const { pluginName, patch }: Patch & PluginName = message.data;
+            // any attempt to get this to open without user interaction is a complete shitshow
+            // just use the builtin fuzzy finder and the patch find
+            // while there might be more than one find, the user can deal with that
+            vscode.commands.executeCommand("workbench.action.quickOpen", "%" + patch.find);
+            break;
+          }
+          case "extract": {
+            const { patch }: Patch = message.data;
+            vscode.commands.executeCommand("equicord-companion.extract", +patch.id);
+            break;
+          }
+          case "diff": {
+            const { oldModule, newModule, id }: Diff & EvaledPatch = message.data;
+            // we cant format code with syntax errors
+            let sourceUri, patchedUri;
+            try {
+              sourceUri = mkStringUri(await format(oldModule));
+              patchedUri = mkStringUri(await format(newModule));
+            } catch (error) {
+              sourceUri = mkStringUri(oldModule);
+              patchedUri = mkStringUri(newModule);
+            }
+            vscode.commands.executeCommand("vscode.diff", sourceUri, patchedUri, "Patch Diff: " + id);
+            break;
+          }
+          default: {
+            vscode.window.showErrorMessage("Unknown message type from webview, got : " + message.type);
+            break;
+          }
         }
-      },
-      null,
-      this._disposables,
-    );
+      } catch (error) {
+        vscode.window.showErrorMessage(String(error));
+      }
+    }, null, this._disposables);
   }
 
   public dispose() {
@@ -161,15 +130,9 @@ export class ReporterPanel {
   }
 
   private _getHtmlForWebview(data: ReporterData) {
-    const scriptPathOnDisk = vscode.Uri.joinPath(
-      this._extensionUri,
-      "dist/webview/index.js",
-    );
+    const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, "dist/webview/index.js");
     const scriptUri = this._panel.webview.asWebviewUri(scriptPathOnDisk);
-    const stylePathOnDisk = vscode.Uri.joinPath(
-      this._extensionUri,
-      "dist/webview/index.css",
-    );
+    const stylePathOnDisk = vscode.Uri.joinPath(this._extensionUri, "dist/webview/index.css");
     const styleUri = this._panel.webview.asWebviewUri(stylePathOnDisk);
 
     // Use a nonce to whitelist which scripts can be run
@@ -192,7 +155,7 @@ export class ReporterPanel {
             <body>
                 <noscript>You need to enable JavaScript to run this app.</noscript>
                 <div id="root"></div>
-
+                
                 <script defer nonce="${nonce}" src="${scriptUri}"></script>
             </body>
             </html>`;
@@ -201,8 +164,7 @@ export class ReporterPanel {
 
 function getNonce() {
   let text = "";
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }

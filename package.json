@@ -1,7 +1,7 @@
 {
   "name": "equicord-companion",
   "displayName": "Equicord Companion",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Equicord Companion is a vscode extension to test Equicord patches & webpack finds right from the comfort of your IDE",
   "categories": [
     "Other",
@@ -43,6 +43,40 @@
     "postinstall": "(cd src/webview && pnpm i)"
   },
   "contributes": {
+    "configuration": {
+      "title": "Equicord Companion",
+      "properties": {
+        "equicord-companion.showSidebar": {
+          "default": false,
+          "description": "Show the sidebar. This is intened to be used by workspaces in their .vscode/settings.json file, use alwaysShowSidebar instead to override this setting",
+          "type": "boolean"
+        },
+        "equicord-companion.alwaysShowSidebar": {
+          "default": false,
+          "description": "Always show the sidebar",
+          "type": "boolean"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "equicord-companion-panel",
+          "title": "Companion",
+          "icon": "assets/oneko.svg"
+        }
+      ]
+    },
+    "views": {
+      "equicord-companion-panel": [
+        {
+          "id": "equicordSettings",
+          "name": "Settings",
+          "when": "config.equicord-companion.showSidebar || config.equicord-companion.alwaysShowSidebar",
+          "visibility": "visible"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "equicord-companion.runReporter",
@@ -63,6 +97,18 @@
       {
         "command": "equicord-companion.extractSearch",
         "title": "Extract With Search"
+      },
+      {
+        "command": "equicord-companion.cacheModules",
+        "title": "Cache Modules"
+      },
+      {
+        "command": "equicord-companion.testDeps",
+        "title": "Test Dependencies"
+      },
+      {
+        "command": "equicord-companion.initDeps",
+        "title": "init deps"
       }
     ],
     "snippets": [
@@ -91,6 +137,7 @@
     "ws": "^8.12.1"
   },
   "devDependencies": {
+    "@intrnl/xxhash64": "^0.1.2",
     "@stylistic/eslint-plugin": "^2.7.2",
     "@types/node": "16.x",
     "@types/vscode": "^1.70.0",
@@ -101,12 +148,13 @@
     "esbuild": "^0.23.1",
     "eslint": "^9.9.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "nanoid": "^5.0.9",
     "typescript-eslint": "^8.3.0"
   },
   "engines": {
     "vscode": "^1.70.0"
   },
-  "icon": "icon.png",
+  "icon": "assets/icon.png",
   "galleryBanner": {
     "color": "#4b4b4b",
     "theme": "dark"

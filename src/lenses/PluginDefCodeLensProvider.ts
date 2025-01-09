@@ -1,35 +1,16 @@
-import {
-  createSourceFile,
-  isCallExpression,
-  isExportAssignment,
-  isIdentifier,
-  isObjectLiteralExpression,
-  isPropertyAssignment,
-  isStringLiteral,
-  Node,
-  ObjectLiteralExpression,
-  ScriptTarget,
-  StringLiteral,
-} from "typescript";
-import {
-  CodeLens,
-  CodeLensProvider,
-  ProviderResult,
-  Range,
-  TextDocument,
-} from "vscode";
+import { createSourceFile, isCallExpression, isExportAssignment, isIdentifier, isObjectLiteralExpression, isPropertyAssignment, isStringLiteral, Node, ObjectLiteralExpression, ScriptTarget, StringLiteral } from "typescript";
+import { CodeLens, CodeLensProvider, ProviderResult, Range, TextDocument } from "vscode";
+
+import { DisablePluginData } from "../server/types/send";
 
 enum ParseResult {
   INVALID,
-  NOT_FOUND,
+  NOT_FOUND
 }
 function isSerialziable(node: Node): asserts node is StringLiteral {
-  if (!isStringLiteral(node)) throw new Error("node is not serializable");
+  if (!(isStringLiteral(node))) throw new Error("node is not serializable");
 }
-function parseObjLiteralExpr<T extends readonly string[]>(
-  expr: ObjectLiteralExpression,
-  search: [...T],
-): { [key in T[number]]: string } {
+function parseObjLiteralExpr<T extends readonly string[]>(expr: ObjectLiteralExpression, search: [...T]): { [key in T[number]]: string } {
   const toRet: Record<string, string> = {};
   for (const node of expr.properties) {
     if (!isPropertyAssignment(node)) continue;
@@ -38,20 +19,20 @@ function parseObjLiteralExpr<T extends readonly string[]>(
     isSerialziable(node.initializer);
     toRet[node.name.text] = node.initializer.text;
   }
-  if (search.some(v => !toRet[v]))
-    throw new Error("Not all search values found");
+  if (search.some(v => !(toRet[v]))) throw new Error("Not all search values found");
   return toRet as any;
 }
-function parsePossiblePatches(node: Node):
-  | {
-    posStart: number;
-    posEnd: number;
-    pluginName: string;
-  }
-  | ParseResult {
-  if (!isExportAssignment(node)) return ParseResult.NOT_FOUND;
-  if (!isCallExpression(node.expression)) return ParseResult.NOT_FOUND;
-  if (!isIdentifier(node.expression.expression)) return ParseResult.NOT_FOUND;
+function parsePossiblePatches(node: Node): {
+  posStart: number,
+  posEnd: number,
+  pluginName: string
+} | ParseResult {
+  if (!isExportAssignment(node))
+    return ParseResult.NOT_FOUND;
+  if (!isCallExpression(node.expression))
+    return ParseResult.NOT_FOUND;
+  if (!isIdentifier(node.expression.expression))
+    return ParseResult.NOT_FOUND;
   if (node.expression.expression.text !== "definePlugin")
     return ParseResult.NOT_FOUND;
   if (!isObjectLiteralExpression(node.expression.arguments[0]))
@@ -65,7 +46,7 @@ function parsePossiblePatches(node: Node):
   return {
     pluginName: pluginDef.name,
     posStart: node.expression.pos,
-    posEnd: node.expression.end,
+    posEnd: node.expression.end
   };
 }
 
@@ -85,34 +66,23 @@ export default class implements CodeLensProvider {
       const patchesArray = parsePossiblePatches(node);
       if (patchesArray === ParseResult.INVALID) return [];
       if (patchesArray === ParseResult.NOT_FOUND) continue;
-      const range = new Range(
-        doc.positionAt(patchesArray.posStart),
-        doc.positionAt(patchesArray.posEnd),
-      );
-      lenses.push(
-        new CodeLens(range, {
-          title: "Disable Plugin",
-          command: "equicord-companion.disablePlugin",
-          arguments: [
-            {
-              pluginName: patchesArray.pluginName,
-              enabled: false,
-            },
-          ],
-        }),
-      );
-      lenses.push(
-        new CodeLens(range, {
-          title: "Enable Plugin",
-          command: "equicord-companion.disablePlugin",
-          arguments: [
-            {
-              pluginName: patchesArray.pluginName,
-              enabled: true,
-            },
-          ],
-        }),
-      );
+      const range = new Range(doc.positionAt(patchesArray.posStart), doc.positionAt(patchesArray.posEnd));
+      lenses.push(new CodeLens(range, {
+        title: "Disable Plugin",
+        command: "equicord-companion.disablePlugin",
+        arguments: [{
+          pluginName: patchesArray.pluginName,
+          enabled: false
+        } satisfies DisablePluginData]
+      }));
+      lenses.push(new CodeLens(range, {
+        title: "Enable Plugin",
+        command: "equicord-companion.disablePlugin",
+        arguments: [{
+          pluginName: patchesArray.pluginName,
+          enabled: true
+        } satisfies DisablePluginData]
+      }));
     }
     return lenses;
   }

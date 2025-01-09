@@ -1,7 +1,7 @@
 import { window } from "vscode";
 
 export const outputChannel = window.createOutputChannel("Equicord Companion");
-
+// FIXME: properly type this, use keyed types
 export interface StringNode {
   type: "string";
   value: string;
@@ -21,29 +21,12 @@ export interface FunctionNode {
 }
 
 export interface ExtractSendData {
-  extractType: string;
-  idOrSearch: string | number;
+  extractType: string
+  idOrSearch: string | number,
 }
 export interface ExtraceRecieveData {
-  moduleNumber: number;
-  type: string;
-  data: string;
-  find?: boolean;
-}
-export interface PatchData {
-  findType: FindType;
-  find: string | null;
-  replacement: {
-    match: StringNode | RegexNode | null;
-    replace: StringNode | FunctionNode;
-  }[];
-}
-
-export interface FindData {
-  type: string;
-  args: Array<StringNode | FunctionNode>;
-}
-export enum FindType {
-  STRING,
-  REGEX,
+  moduleNumber: number,
+  type: string,
+  data: string,
+  find?: boolean
 }

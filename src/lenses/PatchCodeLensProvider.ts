@@ -1,52 +1,18 @@
-import {
-  ArrayLiteralExpression,
-  createSourceFile,
-  Expression,
-  IntersectionTypeNode,
-  isArrayLiteralExpression,
-  isCallExpression,
-  isExportAssignment,
-  isIdentifier,
-  isIntersectionTypeNode,
-  isObjectLiteralExpression,
-  isPropertyAssignment,
-  isRegularExpressionLiteral,
-  isStringLiteral,
-  isTypeReferenceNode,
-  isVariableDeclaration,
-  isVariableStatement,
-  Node,
-  ObjectLiteralExpression,
-  ScriptTarget,
-  TypeReferenceNode,
-} from "typescript";
+
+import { ArrayLiteralExpression, createSourceFile, Expression, IntersectionTypeNode, isArrayLiteralExpression, isCallExpression, isExportAssignment, isIdentifier, isIntersectionTypeNode, isObjectLiteralExpression, isPropertyAssignment, isRegularExpressionLiteral, isStringLiteral, isTypeReferenceNode, isVariableDeclaration, isVariableStatement, Node, ObjectLiteralExpression, ScriptTarget, TypeReferenceNode } from "typescript";
 import { CodeLens, CodeLensProvider, Range, TextDocument } from "vscode";
 
-import { FindType, PatchData } from "../shared";
-import {
-  hasName,
-  isNotNull,
-  tryParseFunction,
-  tryParseRegularExpressionLiteral,
-  tryParseStringLiteral,
-} from "./helpers";
+import { IFindType, IReplacement, PatchData, TestPatch } from "../server/types/send";
+import { hasName, isNotNull, tryParseFunction, tryParseRegularExpressionLiteral, tryParseStringLiteral } from "./helpers";
 
-function parseFind(patch: ObjectLiteralExpression) {
+function parseFind(patch: ObjectLiteralExpression): IFindType | null {
   const find = patch.properties.find(p => hasName(p, "find"));
   if (!find || !isPropertyAssignment(find)) return null;
-  if (
-    !(
-      isStringLiteral(find.initializer) ||
-      isRegularExpressionLiteral(find.initializer)
-    )
-  )
-    return null;
+  if (!(isStringLiteral(find.initializer) || isRegularExpressionLiteral(find.initializer))) return null;
 
   return {
-    findType: isStringLiteral(find.initializer)
-      ? FindType.STRING
-      : FindType.REGEX,
-    find: find.initializer.text,
+    findType: isStringLiteral(find.initializer) ? "string" : "regex",
+    find: find.initializer.text
   };
 }
 
@@ -58,56 +24,39 @@ function parseReplace(document: TextDocument, node: Expression) {
   return tryParseStringLiteral(node) ?? tryParseFunction(document, node);
 }
 
-function parseReplacement(
-  document: TextDocument,
-  patch: ObjectLiteralExpression,
-) {
-  const replacementObj = patch.properties.find(p =>
-    hasName(p, "replacement"),
-  );
+function parseReplacement(document: TextDocument, patch: ObjectLiteralExpression): IReplacement[] | null {
+  const replacementObj = patch.properties.find(p => hasName(p, "replacement"));
 
   if (!replacementObj || !isPropertyAssignment(replacementObj)) return null;
 
   const replacement = replacementObj.initializer;
 
-  const replacements = isArrayLiteralExpression(replacement)
-    ? replacement.elements
-    : [replacement];
+  const replacements = isArrayLiteralExpression(replacement) ? replacement.elements : [replacement];
   if (!replacements.every(isObjectLiteralExpression)) return null;
 
-  const replacementValues = (replacements as ObjectLiteralExpression[])
-    .map((r: ObjectLiteralExpression) => {
-      const match = r.properties.find(p => hasName(p, "match"));
-      const replace = r.properties.find(p => hasName(p, "replace"));
+  const replacementValues = (replacements as ObjectLiteralExpression[]).map((r: ObjectLiteralExpression) => {
+    const match = r.properties.find(p => hasName(p, "match"));
+    const replace = r.properties.find(p => hasName(p, "replace"));
 
-      if (
-        !replace ||
-        !isPropertyAssignment(replace) ||
-        !match ||
-        !isPropertyAssignment(match)
-      )
-        return null;
+    if (!replace || !isPropertyAssignment(replace) || !match || !isPropertyAssignment(match)) return null;
 
-      const matchValue = parseMatch(match.initializer);
-      if (!matchValue) return null;
+    const matchValue = parseMatch(match.initializer);
+    if (!matchValue) return null;
 
-      const replaceValue = parseReplace(document, replace.initializer);
-      if (replaceValue == null) return null;
+    const replaceValue = parseReplace(document, replace.initializer);
+    if (replaceValue == null) return null;
 
-      return {
-        match: matchValue,
-        replace: replaceValue,
-      };
-    })
-    .filter(isNotNull);
+    return {
+      match: matchValue,
+      replace: replaceValue
+    };
+  }).filter(isNotNull);
 
   return replacementValues.length > 0 ? replacementValues : null;
 }
 
-function parsePatch(
-  document: TextDocument,
-  patch: ObjectLiteralExpression,
-): PatchData | null {
+// FIXME: remove any
+function parsePatch(document: TextDocument, patch: ObjectLiteralExpression): PatchData | null {
   const find = parseFind(patch);
   const replacement = parseReplacement(document, patch);
 
@@ -115,22 +64,19 @@ function parsePatch(
 
   return {
     ...find,
-    replacement,
+    replacement
   };
 }
 
 const enum ParseResult {
   NOT_FOUND,
-  INVALID,
+  INVALID
 }
 
-const recursivelyFindType = (
-  node: TypeReferenceNode | IntersectionTypeNode,
-  typeName: string,
-): TypeReferenceNode | undefined => {
+
+const recursivelyFindType = (node: TypeReferenceNode | IntersectionTypeNode, typeName: string): TypeReferenceNode | undefined => {
   if (!isIntersectionTypeNode(node) && isTypeReferenceNode(node)) {
-    if (isIdentifier(node.typeName) && node.typeName.text === typeName)
-      return node;
+    if (isIdentifier(node.typeName) && node.typeName.text === typeName) return node;
     else return;
   }
 
@@ -143,11 +89,7 @@ const recursivelyFindType = (
         }
       }
     }
-    if (
-      isTypeReferenceNode(type) &&
-      isIdentifier(type.typeName) &&
-      type.typeName.text === typeName
-    ) {
+    if (isTypeReferenceNode(type) && isIdentifier(type.typeName) && type.typeName.text === typeName) {
       return type;
     } else if (isIntersectionTypeNode(type)) {
       const t = recursivelyFindType(type, typeName);
@@ -156,23 +98,14 @@ const recursivelyFindType = (
   }
 };
 
-function parsePossiblePatches(
-  node: Node,
-): ArrayLiteralExpression | ParseResult {
+
+function parsePossiblePatches(node: Node): ArrayLiteralExpression | ParseResult {
   let pluginObj: Expression | undefined = undefined;
 
   if (isVariableStatement(node)) {
     for (const decl of node.declarationList.declarations) {
-      if (
-        isVariableDeclaration(decl) &&
-        decl.type &&
-        decl.initializer &&
-        isObjectLiteralExpression(decl.initializer)
-      ) {
-        if (
-          isTypeReferenceNode(decl.type) ||
-          isIntersectionTypeNode(decl.type)
-        ) {
+      if (isVariableDeclaration(decl) && decl.type && decl.initializer && isObjectLiteralExpression(decl.initializer)) {
+        if (isTypeReferenceNode(decl.type) || isIntersectionTypeNode(decl.type)) {
           const type = recursivelyFindType(decl.type, "PluginDef");
           if (type) {
             pluginObj = decl.initializer;
@@ -184,15 +117,10 @@ function parsePossiblePatches(
   }
 
   if (!pluginObj) {
-    if (!isExportAssignment(node) || !isCallExpression(node.expression))
-      return ParseResult.NOT_FOUND;
+    if (!isExportAssignment(node) || !isCallExpression(node.expression)) return ParseResult.NOT_FOUND;
 
     const callExpr = node.expression;
-    if (
-      !isIdentifier(callExpr.expression) ||
-      callExpr.expression.text !== "definePlugin"
-    )
-      return ParseResult.NOT_FOUND;
+    if (!isIdentifier(callExpr.expression) || callExpr.expression.text !== "definePlugin") return ParseResult.NOT_FOUND;
 
     pluginObj = node.expression.arguments[0];
   }
@@ -202,13 +130,9 @@ function parsePossiblePatches(
   const patchesObj = pluginObj.properties.find(p => hasName(p, "patches"));
   if (!patchesObj) return ParseResult.INVALID;
 
-  const patchesArray = isPropertyAssignment(patchesObj)
-    ? patchesObj.initializer
-    : patchesObj;
+  const patchesArray = isPropertyAssignment(patchesObj) ? patchesObj.initializer : patchesObj;
 
-  return isArrayLiteralExpression(patchesArray)
-    ? patchesArray
-    : ParseResult.INVALID;
+  return isArrayLiteralExpression(patchesArray) ? patchesArray : ParseResult.INVALID;
 }
 
 export class PatchCodeLensProvider implements CodeLensProvider {
@@ -236,34 +160,25 @@ export class PatchCodeLensProvider implements CodeLensProvider {
         const data = parsePatch(document, patch);
         if (!data) continue;
 
-        const range = new Range(
-          document.positionAt(patch.properties.pos),
-          document.positionAt(patch.properties.end),
-        );
-        lenses.push(
-          new CodeLens(range, {
-            title: "View Module",
-            command: "equicord-companion.extractSearch",
-            arguments: [data.find, data.findType],
-            tooltip: "View Module",
-          }),
-        );
-        lenses.push(
-          new CodeLens(range, {
-            title: "Diff Module",
-            command: "equicord-companion.diffModuleSearch",
-            arguments: [data.find, data.findType],
-            tooltip: "Diff Module",
-          }),
-        );
-        lenses.push(
-          new CodeLens(range, {
-            title: "Test Patch",
-            command: "equicord-companion.testPatch",
-            arguments: [data],
-            tooltip: "Test Patch",
-          }),
-        );
+        const range = new Range(document.positionAt(patch.properties.pos), document.positionAt(patch.properties.end));
+        lenses.push(new CodeLens(range, {
+          title: "View Module",
+          command: "equicord-companion.extractSearch",
+          arguments: [data.find, data.findType],
+          tooltip: "View Module"
+        }));
+        lenses.push(new CodeLens(range, {
+          title: "Diff Module",
+          command: "equicord-companion.diffModuleSearch",
+          arguments: [data.find, data.findType],
+          tooltip: "Diff Module"
+        }));
+        lenses.push(new CodeLens(range, {
+          title: "Test Patch",
+          command: "equicord-companion.testPatch",
+          arguments: [data],
+          tooltip: "Test Patch"
+        }));
       }
       return lenses;
     }
