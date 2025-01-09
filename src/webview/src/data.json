@@ -187,7 +187,7 @@
         "replacement": [
           {
             "match": {},
-            "replace": "$&Equicord.Plugins.plugins[\"BetterNotesBox\"].patchPadding({lastSection:$1}),"
+            "replace": "$&Vencord.Plugins.plugins[\"BetterNotesBox\"].patchPadding({lastSection:$1}),"
           }
         ],
         "plugin": "BetterNotesBox",
@@ -208,7 +208,7 @@
         "replacement": [
           {
             "match": {},
-            "replace": "Equicord.Plugins.plugins[\"UserVoiceShow\"].patchPopout(arguments[0]),"
+            "replace": "Vencord.Plugins.plugins[\"UserVoiceShow\"].patchPopout(arguments[0]),"
           }
         ],
         "plugin": "UserVoiceShow",

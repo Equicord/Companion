@@ -68,7 +68,7 @@ class _ModuleCache {
 
     private async writeModules(modmap: Record<string, string>) {
         if (await exists(this.modpath)) {
-            throw new Error(".modules already exists, please run `vencord-companion.clearCache` first");
+            throw new Error(".modules already exists, please run `equicord-companion.clearCache` first");
         }
         await fs.mkdir(this.modpath);
         let canceled = false;
@@ -193,7 +193,7 @@ export class ModuleDepManager {
         return !!this.modCache;
     }
 
-    // FIXME: setting to start caching when a webpack module is opened / when the vencord workspace is opened
+    // FIXME: setting to start caching when a webpack module is opened / when the equicord workspace is opened
     public static async initModDeps(opts: DepsGeneratorOpts) {
         this.modCache = await (await new this(opts).ready()).gererateDeps();
     }

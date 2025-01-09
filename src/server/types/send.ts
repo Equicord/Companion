@@ -1,4 +1,4 @@
-// should be the same types as ./src/plugins/devCompanion.dev/types/recieve.ts in vencord
+// should be the same types as ./src/plugins/devCompanion.dev/types/recieve.ts in equicord
 export type SearchData =
     | {
         extractType: "id";

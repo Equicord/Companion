@@ -1,7 +1,7 @@
 import { Command, commands, Disposable } from "vscode";
 
 export default class RuntimeCommand {
-    private static readonly prefix = "vencord-companion-runtime-command";
+    private static readonly prefix = "equicord-companion-runtime-command";
 
     private static registeredCommands: Record<string, Disposable> = {};
 
