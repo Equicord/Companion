@@ -14,26 +14,26 @@ export class PatchCodeLensProvider implements CodeLensProvider {
         for (const { range, ...data } of patches) {
             lenses.push(new CodeLens(range, {
                 title: "View Module",
-                command: "vencord-companion.extractSearch",
+                command: "equicord-companion.extractSearch",
                 arguments: [data.find, data.findType],
                 tooltip: "View Module"
             }));
             lenses.push(new CodeLens(range, {
                 title: "Diff Module",
-                command: "vencord-companion.diffModuleSearch",
+                command: "equicord-companion.diffModuleSearch",
                 arguments: [data.find, data.findType],
                 tooltip: "Diff Module"
             }));
             lenses.push(new CodeLens(range, {
                 title: "Test Patch",
-                command: "vencord-companion.testPatch",
+                command: "equicord-companion.testPatch",
                 arguments: [data],
                 tooltip: "Test Patch"
             }));
             lenses.push(new CodeLens(range, {
                 title: "Open in Patch Helper",
                 tooltip: "Opens the patch in patch helper, if another patch from this file is aready open, it will be replaced",
-                command: "vencord-companion.openPatchHelper",
+                command: "equicord-companion.openPatchHelper",
                 arguments: [document, data]
             }));
         }

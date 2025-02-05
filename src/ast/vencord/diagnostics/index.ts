@@ -4,7 +4,7 @@ import { sendAndGetData, sockets } from "@server/index";
 
 import { Diagnostic, DiagnosticSeverity, languages, Range, TextDocument, TextDocumentChangeEvent, Uri } from "vscode";
 
-const diagnosticCollection = languages.createDiagnosticCollection("vencord-companion");
+const diagnosticCollection = languages.createDiagnosticCollection("equicord-companion");
 
 export function onEditCallback(e: TextDocumentChangeEvent) {
     if (!e) return;
@@ -45,7 +45,7 @@ async function makePatchDiagnostic(doc: VencordAstParser): Promise<Diagnostic[]>
                     type: "testPatch",
                     data,
                 }).then(
-                    () => {},
+                    () => { },
                     (e: string | Error) => (typeof e === "string" ? e : e?.message)
                 ),
             }))
@@ -56,7 +56,7 @@ async function makePatchDiagnostic(doc: VencordAstParser): Promise<Diagnostic[]>
             range: range,
             message: message,
             severity: DiagnosticSeverity.Error,
-            source: "Vencord-Companion",
+            source: "Equicord-Companion",
             code: "patch",
         }));
 }
@@ -66,7 +66,7 @@ async function makeFindDiagnostic(doc: VencordAstParser): Promise<Diagnostic[]> 
             doc.getFinds().map(async ({ range, use }) => ({
                 range,
                 message: await sendAndGetData(use).then(
-                    () => {},
+                    () => { },
                     (e: string | Error) => (typeof e === "string" ? e : e?.message)
                 ),
             }))
@@ -77,7 +77,7 @@ async function makeFindDiagnostic(doc: VencordAstParser): Promise<Diagnostic[]> 
             range: range,
             severity: DiagnosticSeverity.Error,
             message: message,
-            source: "Vencord-Companion",
+            source: "Equicord-Companion",
             code: "find",
         }));
 }

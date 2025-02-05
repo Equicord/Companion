@@ -39,7 +39,7 @@ class LastTwo<T> {
         return [this.one, this.two];
     }
 }
-// uri format: vencord-patchhelper://patch/:id.js
+// uri format: equicord-patchhelper://patch/:id.js
 export class PatchHelper {
     private _lastPatch!: SourcePatch;
     editor?: TextEditor;
@@ -60,7 +60,7 @@ export class PatchHelper {
     private lastFindLength!: number;
     private moduleData?: ExtractModuleR["data"];
     private get displayUri() {
-        return Uri.parse(`vencord-patchhelper://patch/${this.id}.js`);
+        return Uri.parse(`equicord-patchhelper://patch/${this.id}.js`);
     }
     public static async create(doc: TextDocument, lastPatch: SourcePatch) {
         if (PatchHelper.activeWindows.has(doc.uri.path)) {
@@ -243,7 +243,7 @@ export class PatchHelper {
      * @param e handle closing of our source documents
      */
     public static async onCloseDocument(e: TextDocument) {
-        if (e.uri.scheme === "vencord-patchhelper") {
+        if (e.uri.scheme === "equicord-patchhelper") {
             const helper = PatchHelper.activeWindowsById.get(PatchHelper.idFromUri(e.uri));
             helper?.end();
         }
@@ -268,7 +268,7 @@ export class PatchHelper {
      */
     public static changeActiveEditor(_editor: TextEditor | undefined): void {
         if (
-            window.activeTextEditor?.document.uri.scheme === "vencord-patchhelper"
+            window.activeTextEditor?.document.uri.scheme === "equicord-patchhelper"
         ) {
             commands.executeCommand(
                 "workbench.action.files.setActiveEditorReadonlyInSession"
