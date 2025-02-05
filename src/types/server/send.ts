@@ -21,7 +21,9 @@ export type SearchData =
     );
 
 export type FindOrSearchData =
-    | SearchData
+    | (SearchData & {
+        usePatched: boolean | null;
+    })
     | ({
         extractType: "find";
     } & _PrefixKeys<_CapitalizeKeys<FindData>, "find">);
@@ -60,6 +62,9 @@ export type IReplacement = {
 export type IFindType = (
     | {
         findType: "string";
+        /**
+         * the find string
+         */
         find: string;
     }
     | {
@@ -78,7 +83,7 @@ export type DisablePluginData = {
     pluginName: string;
 };
 
-export type OutgoingMessage = DisablePlugin | RawId | DiffPatch | Reload | ExtractModule | TestPatch | TestFind | AllModules;
+export type OutgoingMessage = DisablePlugin | RawIdS | DiffPatch | Reload | ExtractModuleS | TestPatch | TestFind | AllModules;
 export type FullOutgoingMessage = OutgoingMessage & { nonce: number; };
 // #region valid payloads
 export type DisablePlugin = {
@@ -86,7 +91,7 @@ export type DisablePlugin = {
     data: DisablePluginData;
 };
 
-export type RawId = {
+export type RawIdS = {
     type: "rawId";
     data: {
         id: number;
@@ -103,7 +108,7 @@ export type Reload = {
     data: null;
 };
 
-export type ExtractModule = {
+export type ExtractModuleS = {
     type: "extract";
     // FIXME: update client code so you can just pass FindData here
     data: FindOrSearchData;

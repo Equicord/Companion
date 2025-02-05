@@ -1,18 +1,19 @@
-import { hasConnectons, onConnect } from "@server/webSocketServer";
-import { ModuleCache, ModuleDepManager } from "modules/cache";
+import { ModuleCache, ModuleDepManager } from "@modules/cache";
+import { hasConnectons, onConnect } from "@server/index";
+import { IDynamicNode, TNode } from "@type/sidebar";
+
+import { Button, Item, Section, Text } from "./Nodes";
+
 import { nanoid } from "nanoid";
 import {
     EventEmitter,
-    ProviderResult,
     TreeDataProvider,
     TreeItem,
 } from "vscode";
 
-import { Button, IDynamicNode, Item, Section, Text, TNode } from "./Nodes";
-
 type Promisable<T> = T | Promise<T>;
 
-export default class treeDataProvider implements TreeDataProvider<TNode> {
+export class treeDataProvider implements TreeDataProvider<TNode> {
     // fucking cursed
     private DynamicNode = (() => {
         const provider = this;
@@ -40,7 +41,7 @@ export default class treeDataProvider implements TreeDataProvider<TNode> {
                 onConnect(r);
                 return new Section("Module Settings", [
                     (await ModuleCache.hasCache())
-                        ? new Button("Purge Cache", () => ModuleCache.clearCache().then(() => setTimeout(() =>this._onDidChangeTreeData.fire())))
+                        ? new Button("Purge Cache", () => ModuleCache.clearCache().then(() => setTimeout(() => this._onDidChangeTreeData.fire())))
                         : new this.DynamicNode(r =>
                             hasConnectons()
                                 ? new Button("Download Modules", () =>

@@ -1,11 +1,13 @@
-import * as fs from "fs/promises";
-import { join, normalize, resolve } from "path";
-import { ProgressLocation, Uri, window, workspace } from "vscode";
+import { WebpackAstParser } from "@ast/webpack";
+import { outputChannel } from "@extension";
+import { format } from "@modules/format";
+import { BufferedProgressBar, exists, getCurrentFolder, isDirectory, ProgressBar, SecTo } from "@modules/util";
+import { formatModule, sendAndGetData } from "@server";
 
-import format from "../format";
-import { WebpackAstParser } from "../lsp";
-import { formatModule, sendAndGetData } from "../server/webSocketServer";
-import { BufferedProgressBar, exists, getCurrentFolder, isDirectory, ProgressBar, SecTo } from "./util";
+import { mkdir, readdir,readFile, rm, writeFile } from "fs/promises";
+import { join, resolve } from "path";
+
+import { ProgressLocation, Uri, window } from "vscode";
 
 class _ModuleCache {
     folder: string;
@@ -38,8 +40,8 @@ class _ModuleCache {
             await this.formatModules(modmap);
             await this.writeModules(modmap);
         } catch (error) {
-            console.error(error);
             window.showErrorMessage("Error downloading modules:\n" + String(error));
+            outputChannel.appendLine(String(error));
         }
     }
 
@@ -47,7 +49,7 @@ class _ModuleCache {
         if (!await this.hasCache()) {
             throw new Error("No cache to clear");
         }
-        return fs.rm(this.modpath, {
+        return rm(this.modpath, {
             recursive: true,
             force: false,
         });
@@ -61,7 +63,7 @@ class _ModuleCache {
         if (!await this.hasCache()) {
             throw new Error("Module cache not found");
         }
-        return await fs.readFile(join(this.modpath, id + ".js"), {
+        return await readFile(join(this.modpath, id + ".js"), {
             encoding: "utf-8"
         });
     }
@@ -70,7 +72,7 @@ class _ModuleCache {
         if (await exists(this.modpath)) {
             throw new Error(".modules already exists, please run `equicord-companion.clearCache` first");
         }
-        await fs.mkdir(this.modpath);
+        await mkdir(this.modpath);
         let canceled = false;
         const progress = await new ProgressBar(Object.entries(modmap).length, "Writing modules", () => {
             canceled = true;
@@ -81,7 +83,7 @@ class _ModuleCache {
             }
             try {
                 // FIXME: check if id has any invalid/malicious characters
-                await fs.writeFile(join(this.modpath, id + ".js"), text);
+                await writeFile(join(this.modpath, id + ".js"), text);
                 progress.increment();
             } catch (error) {
                 progress.stop(error);
@@ -98,7 +100,6 @@ class _ModuleCache {
 
         for (const [id, text] of Object.entries(modmap)) {
             if (canceled) {
-                console.log("canceled");
                 throw new Error("Module formatting canceled");
                 break;
             }
@@ -106,7 +107,6 @@ class _ModuleCache {
                 modmap[id] = await format(formatModule(text, id));
                 await progress.increment();
             } catch (error) {
-                console.log("error");
                 throw error;
             }
         }
@@ -140,7 +140,6 @@ class _ModuleCache {
             }
             res[id] = text;
         }
-        console.log(res);
         return res;
     }
 
@@ -270,7 +269,7 @@ export class ModuleDepManager {
             location: ProgressLocation.Notification,
             cancellable: true,
             title: "reading module list"
-        }, () => fs.readdir(modpath));
+        }, () => readdir(modpath));
         let cancelled = false;
         const progress = await new ProgressBar(files.length, "loading files", () => {
             cancelled = true;
@@ -293,7 +292,7 @@ export class ModuleDepManager {
                 }
                 progress.increment();
                 // FIXME: add abort singal
-                const text = await fs.readFile(filepath, {
+                const text = await readFile(filepath, {
                     encoding: "utf-8",
                 });
                 toRet[modId] = text;
