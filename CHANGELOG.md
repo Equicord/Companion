@@ -23,7 +23,7 @@
 
 # 0.1.4
 
--  Minor Updates & Bug Fixes aswell as support for the equicordplugins dir
+- Minor Updates & Bug Fixes aswell as support for the equicordplugins dir
 
 # 0.1.5
 
@@ -34,5 +34,9 @@
 TODO: write notes
 
 # 2025.2.5
+
+TODO: write notes
+
+# 2025.4.25
 
 TODO: write notes

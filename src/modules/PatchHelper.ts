@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/indent-binary-ops */
 import { makeRange } from "@ast/util";
 import { VencordAstParser } from "@ast/vencord";
 import { outputChannel } from "@modules/logging";

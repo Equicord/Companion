@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/indent-binary-ops */
 import { tryParseFunction, tryParseRegularExpressionLiteral, tryParseStringLiteral } from "@ast/util";
 import { AnyFindType, Discriminate, OutgoingMessage } from "@type/server";
 

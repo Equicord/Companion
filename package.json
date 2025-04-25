@@ -1,7 +1,7 @@
 {
     "name": "equicord-companion",
     "displayName": "Equicord Companion",
-    "version": "2025.2.5",
+    "version": "2025.4.25",
     "description": "Equicord Companion is a vscode extension to test Equicord patches & webpack finds right from the comfort of your IDE",
     "categories": [
         "Other",

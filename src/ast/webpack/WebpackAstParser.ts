@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/indent-binary-ops */
 import { AstParser } from "@ast/AstParser";
 import {
     allEntries,
