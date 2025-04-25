@@ -1,23 +1,23 @@
 // should be the same types as ./src/plugins/devCompanion.dev/types/recieve.ts in equicord
 export type SearchData =
+  | {
+      extractType: "id";
+      idOrSearch: number;
+  }
+  | (
     | {
-        extractType: "id";
-        idOrSearch: number;
+        extractType: "search";
+        /**
+        * stringified regex
+        */
+        idOrSearch: string;
+        findType: "regex";
     }
-    | (
-        | {
-            extractType: "search";
-            /**
-             * stringified regex
-             */
-            idOrSearch: string;
-            findType: "regex";
-        }
-        | {
-            extractType: "search";
-            idOrSearch: string;
-            findType: "string";
-        }
+    | {
+        extractType: "search";
+        idOrSearch: string;
+        findType: "string";
+    }
     );
 
 export type FindOrSearchData =
@@ -60,20 +60,20 @@ export type IReplacement = {
     replace: StringNode | FunctionNode;
 };
 export type IFindType = (
-    | {
-        findType: "string";
-        /**
-         * the find string
-         */
-        find: string;
-    }
-    | {
-        findType: "regex";
-        /**
-         * stringified regex
-         */
-        find: string;
-    }
+  | {
+      findType: "string";
+      /**
+               * the find string
+               */
+      find: string;
+  }
+  | {
+      findType: "regex";
+      /**
+               * stringified regex
+               */
+      find: string;
+  }
 );
 export type PatchData = IFindType & {
     replacement: IReplacement[];
@@ -83,9 +83,23 @@ export type DisablePluginData = {
     pluginName: string;
 };
 
-export type OutgoingMessage = DisablePlugin | RawIdS | DiffPatch | Reload | ExtractModuleS | TestPatch | TestFind | AllModules;
+export type OutgoingMessage = DisablePlugin
+  | RawIdS
+  | DiffPatch
+  | Reload
+  | ExtractModuleS
+  | TestPatch
+  | TestFind
+  | AllModules
+  | I18nLookup;
 export type FullOutgoingMessage = OutgoingMessage & { nonce: number; };
 // #region valid payloads
+export type I18nLookup = {
+    type: "i18n";
+    data: {
+        hashedKey: string;
+    };
+};
 export type DisablePlugin = {
     type: "disable";
     data: DisablePluginData;

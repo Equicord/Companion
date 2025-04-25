@@ -3,6 +3,7 @@ import { I18nHover } from "@ast/vencord/hover";
 import { PatchCodeLensProvider, PluginDefCodeLensProvider, WebpackCodeLensProvider } from "@ast/vencord/lenses";
 import { PartialModuleJumpCodeLensProvider } from "@ast/webpack/lenses";
 import { DefinitionProvider, ReferenceProvider } from "@ast/webpack/lsp";
+import { outputChannel } from "@modules/logging";
 import { PatchHelper } from "@modules/PatchHelper";
 import { handleDiffPayload, handleExtractPayload, moduleCache, sendAndGetData, startWebSocketServer, stopWebSocketServer } from "@server";
 import { treeDataProvider } from "@sidebar";
@@ -17,7 +18,6 @@ import { commands, ExtensionContext, languages, QuickPickItem, TextDocument, Uri
 export let extensionUri: Uri;
 export let extensionPath: string;
 
-export const outputChannel = vscWindow.createOutputChannel("Equicord Companion");
 
 export function activate(context: ExtensionContext) {
     extensionUri = context.extensionUri;
@@ -33,63 +33,83 @@ export function activate(context: ExtensionContext) {
         window.tabGroups.onDidChangeTabs(PatchHelper.onTabClose),
         languages.registerCodeLensProvider(
             { pattern: "**/{plugins,userplugins,equicordplugins,plugins/_*,equicordplugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
-            new PluginDefCodeLensProvider()
+            new PluginDefCodeLensProvider(),
         ),
         languages.registerCodeLensProvider(
             { pattern: "**/{plugins,userplugins,equicordplugins,plugins/_*,equicordplugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
-            new PatchCodeLensProvider()
+            new PatchCodeLensProvider(),
         ),
-        languages.registerDefinitionProvider({ language: "javascript" }, new DefinitionProvider),
-        languages.registerReferenceProvider({ language: "javascript" }, new ReferenceProvider),
+        languages.registerDefinitionProvider({ language: "javascript" }, new DefinitionProvider()),
+        languages.registerReferenceProvider({ language: "javascript" }, new ReferenceProvider()),
 
         languages.registerCodeLensProvider({ language: "typescript" }, WebpackCodeLensProvider),
         languages.registerCodeLensProvider({ language: "typescriptreact" }, WebpackCodeLensProvider),
-        languages.registerCodeLensProvider({ language: "javascript" }, new PartialModuleJumpCodeLensProvider),
+        languages.registerCodeLensProvider({ language: "javascript" }, new PartialModuleJumpCodeLensProvider()),
         languages.registerHoverProvider({ language: "typescript" }, new I18nHover()),
         languages.registerHoverProvider({ language: "typescriptreact" }, new I18nHover()),
         workspace.registerTextDocumentContentProvider("equicord-patchhelper", PatchHelper),
         workspace.registerTextDocumentContentProvider("equicord-companion", {
-            async provideTextDocumentContent(uri) {
+            provideTextDocumentContent(uri) {
                 // FIXME: full uri shows up in title bar
                 const newLocal = Buffer.from(uri.path.substring(1, uri.path.lastIndexOf("/")), "base64url");
+
                 return newLocal.toString();
             },
         }),
         commands.registerCommand("equicord-companion.openPatchHelper", async (doc: TextDocument, patch: SourcePatch) => {
             if (!doc) {
-                return window.showErrorMessage("Could not find soruce document");
+                outputChannel.warn("Could not find source document");
+                window.showErrorMessage("Could not find source document");
+                return;
             }
+
             const helper = await PatchHelper.create(doc, patch);
+
             helper.openModuleWindow();
         }),
         commands.registerCommand("equicord-companion.runReporter", startReporter),
-        commands.registerCommand("equicord-companion.diffModule", async args => {
+        commands.registerCommand("equicord-companion.diffModule", async (args) => {
             if (args) {
                 try {
                     const r = await sendAndGetData<"diff">({
                         type: "diff",
                         data: {
                             extractType: "id",
-                            idOrSearch: args
-                        }
+                            idOrSearch: args,
+                        },
                     });
+
                     handleDiffPayload(r);
-                    return;
                 } catch (e) {
+                    outputChannel.error(String(e));
                     window.showErrorMessage(String(e));
                 }
+                return;
             }
+
             // FIXME: refactor to generic quicpick class with these features
             const quickPick = window.createQuickPick();
+
             quickPick.placeholder = "module ID";
             quickPick.canSelectMany = false;
-            const items: QuickPickItem[] = [{ label: "", alwaysShow: false }, { label: "", kind: -1 }, ...(moduleCache.map(m => ({ label: m })))];
+
+            const items: QuickPickItem[] = [
+                {
+                    label: "",
+                    alwaysShow: false,
+                },
+                {
+                    label: "",
+                    kind: -1,
+                },
+                ...moduleCache.map((m) => ({ label: m })),
+            ];
+
             quickPick.items = items;
             quickPick.onDidChangeValue(() => {
                 if (!moduleCache.includes(quickPick.value)) {
                     items[0].label = quickPick.value;
                     items[0].alwaysShow = true;
-
                 } else {
                     items[0].alwaysShow = false;
                 }
@@ -98,6 +118,7 @@ export function activate(context: ExtensionContext) {
             quickPick.show();
             quickPick.onDidAccept(async () => {
                 const modId = quickPick.value;
+
                 quickPick.dispose();
                 if (!modId || isNaN(+modId))
                     return vscWindow.showErrorMessage("No Module ID provided");
@@ -106,16 +127,16 @@ export function activate(context: ExtensionContext) {
                         type: "diff",
                         data: {
                             extractType: "id",
-                            idOrSearch: +modId
+                            idOrSearch: +modId,
                         },
                     });
+
                     handleDiffPayload(r);
                 } catch (error) {
+                    outputChannel.error(String(error));
                     vscWindow.showErrorMessage(String(error));
                 }
             });
-
-
         }),
         commands.registerCommand("equicord-companion.diffModuleSearch", async (args: string, findType: "string" | "regex") => {
             if (args) {
@@ -125,39 +146,52 @@ export function activate(context: ExtensionContext) {
                         data: {
                             extractType: "search",
                             findType,
-                            idOrSearch: args
-                        }
+                            idOrSearch: args,
+                        },
                     });
+
                     handleDiffPayload(r);
-                    return;
                 } catch (e) {
+                    outputChannel.error(String(e));
                     window.showErrorMessage(String(e));
                 }
+                return;
             }
+
             const input = await window.showInputBox();
-            if (!input)
+
+            if (!input) {
+                outputChannel.warn("No Input Provided");
                 return window.showErrorMessage("No Input Provided");
+            }
             try {
                 const r = await sendAndGetData<"diff">({
                     type: "diff",
                     data: {
                         extractType: "search",
                         findType: "string",
-                        idOrSearch: input
-                    }
+                        idOrSearch: input,
+                    },
                 });
+
                 handleDiffPayload(r);
-            } catch (error) {
-                vscWindow.showErrorMessage(String(error));
+            } catch (e) {
+                outputChannel.error(String(e));
+                vscWindow.showErrorMessage(String(e));
             }
         }),
         commands.registerCommand("equicord-companion.extractFind", async (args: Discriminate<OutgoingMessage, "extract">) => {
-            if (!args)
-                return vscWindow.showErrorMessage("No Data Provided");
+            if (!args) {
+                outputChannel.warn("No Data Provided");
+                vscWindow.showErrorMessage("No Data Provided");
+                return;
+            }
             try {
                 const r = await sendAndGetData<"extract">(args);
+
                 handleExtractPayload(r);
             } catch (e) {
+                outputChannel.error(String(e));
                 vscWindow.showErrorMessage(String(e));
             }
         }),
@@ -169,25 +203,42 @@ export function activate(context: ExtensionContext) {
                         data: {
                             extractType: "id",
                             idOrSearch: args,
-                            usePatched: null
-                        }
+                            usePatched: null,
+                        },
                     });
+
                     handleExtractPayload(r);
-                    return;
                 } catch (e) {
+                    outputChannel.error(String(e));
                     window.showErrorMessage(String(e));
                 }
+                return;
             }
+
             const quickPick = window.createQuickPick();
+
             quickPick.placeholder = "module ID";
             quickPick.canSelectMany = false;
-            const items: QuickPickItem[] = [{ label: "", alwaysShow: false }, { label: "", kind: -1 }, ...(moduleCache.map(m => { return { label: m }; }))];
+
+            const items: QuickPickItem[] = [
+                {
+                    label: "",
+                    alwaysShow: false,
+                },
+                {
+                    label: "",
+                    kind: -1,
+                },
+                ...moduleCache.map((m) => {
+                    return { label: m };
+                }),
+            ];
+
             quickPick.items = items;
             quickPick.onDidChangeValue(() => {
                 if (!moduleCache.includes(quickPick.value)) {
                     items[0].label = quickPick.value;
                     items[0].alwaysShow = true;
-
                 } else {
                     items[0].alwaysShow = false;
                 }
@@ -196,6 +247,7 @@ export function activate(context: ExtensionContext) {
             quickPick.show();
             quickPick.onDidAccept(async () => {
                 const modId = quickPick.value;
+
                 quickPick.dispose();
                 if (!modId || isNaN(+modId))
                     return vscWindow.showErrorMessage("No Module ID provided");
@@ -205,15 +257,16 @@ export function activate(context: ExtensionContext) {
                         data: {
                             extractType: "id",
                             idOrSearch: +modId,
-                            usePatched: null
+                            usePatched: null,
                         },
                     });
+
                     handleExtractPayload(r);
-                } catch (error) {
-                    vscWindow.showErrorMessage(String(error));
+                } catch (e) {
+                    outputChannel.error(String(e));
+                    vscWindow.showErrorMessage(String(e));
                 }
             });
-
         }),
         commands.registerCommand("equicord-companion.extractSearch", async (args: string, findType: "string" | "regex") => {
             if (args) {
@@ -224,15 +277,20 @@ export function activate(context: ExtensionContext) {
                             extractType: "search",
                             findType,
                             idOrSearch: args,
-                            usePatched: null
-                        }
+                            usePatched: null,
+                        },
                     });
+
                     handleExtractPayload(r);
                 } catch (e) {
+                    outputChannel.error(String(e));
                     window.showErrorMessage(String(e));
                 }
+                return;
             }
+
             const input = await window.showInputBox();
+
             if (!input)
                 return window.showErrorMessage("No Input Provided");
             try {
@@ -242,23 +300,27 @@ export function activate(context: ExtensionContext) {
                         extractType: "search",
                         findType: "string",
                         idOrSearch: input,
-                        usePatched: null
-                    }
+                        usePatched: null,
+                    },
                 });
+
                 handleExtractPayload(r);
             } catch (e) {
+                outputChannel.error(String(e));
                 vscWindow.showErrorMessage(String(e));
             }
         }),
         commands.registerCommand("equicord-companion.disablePlugin", async (data: DisablePluginData) => {
             try {
-                if (!data) throw new Error("No args passed.");
+                if (!data)
+                    throw new Error("No args passed.");
                 await sendAndGetData({
                     type: "disable",
-                    data
+                    data,
                 });
-            } catch (error) {
-                vscWindow.showErrorMessage(String(error));
+            } catch (e) {
+                outputChannel.error(String(e));
+                vscWindow.showErrorMessage(String(e));
             }
         }),
         commands.registerCommand("equicord-companion.testPatch", async (patch: PatchData) => {
@@ -268,8 +330,9 @@ export function activate(context: ExtensionContext) {
                     data: patch,
                 });
                 vscWindow.showInformationMessage("Patch OK!");
-            } catch (err) {
-                vscWindow.showErrorMessage("Patch failed: " + String(err));
+            } catch (e) {
+                outputChannel.info(`Patch failed: ${e}`);
+                vscWindow.showErrorMessage(`Patch failed: ${e}`);
             }
         }),
 
@@ -280,8 +343,9 @@ export function activate(context: ExtensionContext) {
                     data: find,
                 });
                 vscWindow.showInformationMessage("Find OK!");
-            } catch (err) {
-                vscWindow.showErrorMessage("Find bad: " + String(err));
+            } catch (e) {
+                outputChannel.info(`Find bad: ${e}`);
+                vscWindow.showErrorMessage(`Find bad: ${e}`);
             }
         }),
     );
@@ -293,3 +357,6 @@ export function activate(context: ExtensionContext) {
 export function deactivate() {
     stopWebSocketServer();
 }
+export {
+    outputChannel,
+};
