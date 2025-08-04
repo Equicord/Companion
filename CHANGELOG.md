@@ -29,14 +29,6 @@
 
 - More Minor Updates & Bug Fixes
 
-# 0.2.0
+# 2025.8.3
 
-TODO: write notes
-
-# 2025.2.5
-
-TODO: write notes
-
-# 2025.4.25
-
-TODO: write notes
+- Every update is either a bug fix or overhaul
