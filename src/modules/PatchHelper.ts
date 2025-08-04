@@ -43,7 +43,7 @@ class LastTwo<T> {
         return [this.one, this.two];
     }
 }
-// uri format: vencord-patchhelper://patch/:id.js
+// uri format: equicord-patchhelper://patch/:id.js
 export class PatchHelper {
     private _lastPatch!: SourcePatch;
     editor?: TextEditor;

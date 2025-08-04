@@ -207,7 +207,7 @@ export function mkStringUri(patched: any, filename = "module", filetype = "js"):
     if (filename.indexOf("/") !== -1 || filetype.indexOf("/") !== -1)
         throw new Error(`Filename and filetype must not contain \`/\`. Got: ${SUFFIX.substring(1)}`);
 
-    const PREFIX = "vencord-companion://b64string/";
+    const PREFIX = "equicord-companion://b64string/";
     const a = Buffer.from(patched);
 
     return Uri.parse(PREFIX + a.toString("base64url") + SUFFIX);
