@@ -5,15 +5,15 @@
     "target": "es2023",
     "noImplicitAny": false,
   },
-  "include": [
-    "src"
-  ],
   "paths": {
     "@vencord-companion/ast-parser": [
       "../ast-parser/src"
     ],
     "@vencord-companion/shared/*": [
       "../shared/src/*"
-    ],
-  }
+    ]
+  },
+  "include": [
+    "src"
+  ],
 }
