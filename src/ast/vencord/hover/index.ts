@@ -20,7 +20,7 @@ async function getI18nValue(hashedKey: string) {
                 hashedKey,
             },
         }))?.data.value ?? "ERROR FETCHING I18N VALUE");
-    } catch (e) {
+    } catch {
         outputChannel.error("Error fetching I18n value");
         return "ERROR FETCHING I18N VALUE";
     }
