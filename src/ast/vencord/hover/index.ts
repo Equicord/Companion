@@ -1,10 +1,10 @@
-import { AstParser } from "@ast/AstParser";
-import { isStringLiteralLikeOrTemplateLiteralFragmentOrRegexLiteral } from "@ast/util";
+import { isStringLiteralLikeOrTemplateLiteralFragmentOrRegexLiteral, toVscodeRange } from "@ast/util";
 import { runtimeHashMessageKey } from "@modules/intlHash";
 import { outputChannel } from "@modules/logging";
 import { intlRegex } from "@modules/patches";
 import { sendAndGetData } from "@server/index";
 import { PromiseProivderResult } from "@type/index";
+import { AstParser } from "@vencord-companion/ast-parser";
 
 // import mappings from "./mappings.json";
 import { isRegularExpressionLiteral } from "typescript";
@@ -13,12 +13,17 @@ import { Hover, HoverProvider, MarkdownString, Position, TextDocument } from "vs
 const i18nCache = {};
 
 async function getI18nValue(hashedKey: string) {
-    return (i18nCache[hashedKey] ??= (await sendAndGetData<"i18n">({
-        type: "i18n",
-        data: {
-            hashedKey,
-        },
-    }))?.data.value ?? "ERROR FETCHING I18N VALUE");
+    try {
+        return (i18nCache[hashedKey] ??= (await sendAndGetData<"i18n">({
+            type: "i18n",
+            data: {
+                hashedKey,
+            },
+        }))?.data.value ?? "ERROR FETCHING I18N VALUE");
+    } catch (e) {
+        outputChannel.error("Error fetching I18n value");
+        return "ERROR FETCHING I18N VALUE";
+    }
 }
 export class I18nHover implements HoverProvider {
     async provideHover(document: TextDocument, position: Position): PromiseProivderResult<Hover> {
@@ -54,7 +59,7 @@ export class I18nHover implements HoverProvider {
                     });
 
                     return {
-                        range,
+                        range: toVscodeRange(range),
                         contents: [
                             new MarkdownString(hasSpecialChars ? `["${hashedKey}"]` : `.${hashedKey}`),
                             // FIXME: refactor

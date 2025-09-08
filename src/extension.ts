@@ -3,15 +3,16 @@ import { I18nHover } from "@ast/vencord/hover";
 import { PatchCodeLensProvider, PluginDefCodeLensProvider, WebpackCodeLensProvider } from "@ast/vencord/lenses";
 import { PartialModuleJumpCodeLensProvider } from "@ast/webpack/lenses";
 import { DefinitionProvider, ReferenceProvider } from "@ast/webpack/lsp";
+import { ModuleCache, ModuleDepManager } from "@modules/cache";
 import { outputChannel } from "@modules/logging";
 import { PatchHelper } from "@modules/PatchHelper";
 import { handleDiffPayload, handleExtractPayload, moduleCache, sendAndGetData, startWebSocketServer, stopWebSocketServer } from "@server";
 import { treeDataProvider } from "@sidebar";
-import { SourcePatch } from "@type/ast";
 import { Discriminate } from "@type/server";
 import { DisablePluginData, FindData, OutgoingMessage, PatchData } from "@type/server/send";
-
-import { startReporter } from "./reporter";
+import { setLogger as setAstLogger } from "@vencord-companion/ast-parser";
+import { SourcePatch } from "@vencord-companion/vencord-ast-parser";
+import { setLogger as setWebpackLogger, WebpackAstParser } from "@vencord-companion/webpack-ast-parser";
 
 import { commands, ExtensionContext, languages, QuickPickItem, TextDocument, Uri, window as vscWindow, window, workspace } from "vscode";
 
@@ -20,6 +21,31 @@ export let extensionPath: string;
 
 
 export function activate(context: ExtensionContext) {
+    setAstLogger(outputChannel);
+    setWebpackLogger(outputChannel);
+    WebpackAstParser.setDefaultModuleCache({
+        async getLatestModuleFromNum(id) {
+            const { data } = await sendAndGetData<"rawId">({
+                type: "rawId",
+                data: {
+                    id: +id,
+                },
+            });
+
+            return data;
+        },
+        getModuleFilepath(id) {
+            return ModuleCache.getModulePath(id);
+        },
+        getModuleFromNum(id) {
+            return ModuleCache.getModuleFromNum(id);
+        },
+    });
+    WebpackAstParser.setDefaultModuleDepManager({
+        getModDeps(moduleId) {
+            return ModuleDepManager.getModDeps(moduleId);
+        },
+    });
     extensionUri = context.extensionUri;
     extensionPath = context.extensionPath;
     startWebSocketServer();
@@ -32,11 +58,11 @@ export function activate(context: ExtensionContext) {
         window.onDidChangeActiveTextEditor(PatchHelper.changeActiveEditor),
         window.tabGroups.onDidChangeTabs(PatchHelper.onTabClose),
         languages.registerCodeLensProvider(
-            { pattern: "**/{plugins,userplugins,equicordplugins,plugins/_*,equicordplugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
+            { pattern: "**/{*plugins,plugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
             new PluginDefCodeLensProvider(),
         ),
         languages.registerCodeLensProvider(
-            { pattern: "**/{plugins,userplugins,equicordplugins,plugins/_*,equicordplugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
+            { pattern: "**/{*plugins,plugins/_*}/{*.ts,*.tsx,**/index.ts,**/index.tsx}" },
             new PatchCodeLensProvider(),
         ),
         languages.registerDefinitionProvider({ language: "javascript" }, new DefinitionProvider()),
@@ -67,7 +93,6 @@ export function activate(context: ExtensionContext) {
 
             helper.openModuleWindow();
         }),
-        commands.registerCommand("equicord-companion.runReporter", startReporter),
         commands.registerCommand("equicord-companion.diffModule", async (args) => {
             if (args) {
                 try {
@@ -151,6 +176,7 @@ export function activate(context: ExtensionContext) {
                     });
 
                     handleDiffPayload(r);
+                    return;
                 } catch (e) {
                     outputChannel.error(String(e));
                     window.showErrorMessage(String(e));
@@ -208,6 +234,7 @@ export function activate(context: ExtensionContext) {
                     });
 
                     handleExtractPayload(r);
+                    return;
                 } catch (e) {
                     outputChannel.error(String(e));
                     window.showErrorMessage(String(e));

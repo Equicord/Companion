@@ -28,6 +28,7 @@
     "pauseForSourceMap": true,
   },
   "cSpell.words": [
+    "clazz",
     "cpuprofile",
     "eslintcache",
     "flatmaps",
@@ -36,13 +37,47 @@
     "jsxs",
     "Literalish",
     "mapstrace",
+    "Meinhardt",
+    "modmap",
     "moduleid",
     "outdir",
+    "tsutils",
     "typeguard",
+    "USERPLUGIN",
+    "userplugins",
     "Vencord",
+    "vitest",
     "wreq",
     "WUMPUS"
   ],
-  "npm.autoDetect": "off",
-  "eslint.lintTask.options": "--cache",
+  "test": [
+    "it",
+    "test"
+  ],
+  "extractWith": "evaluation"
+},
+"extension-test-runner.debugOptions": {
+  "outFiles": [
+    "${workspaceFolder}/dist.test/**/*.js"
+  ],
+  "pauseForSourceMap": true,
+},
+"cSpell.words": [
+  "cpuprofile",
+  "eslintcache",
+  "flatmaps",
+  "Functionish",
+  "intrnl",
+  "jsxs",
+  "Literalish",
+  "mapstrace",
+  "moduleid",
+  "outdir",
+  "typeguard",
+  "Vencord",
+  "wreq",
+  "WUMPUS"
+],
+"npm.autoDetect": "off",
+"eslint.lintTask.options": "--cache",
 }

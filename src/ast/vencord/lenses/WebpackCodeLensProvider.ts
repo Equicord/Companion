@@ -1,6 +1,5 @@
-/* eslint-disable @stylistic/indent-binary-ops */
-import { tryParseFunction, tryParseRegularExpressionLiteral, tryParseStringLiteral } from "@ast/util";
 import { AnyFindType, Discriminate, OutgoingMessage } from "@type/server";
+import { tryParseFunction, tryParseRegularExpressionLiteral, tryParseStringLiteral } from "@vencord-companion/vencord-ast-parser";
 
 import { createSourceFile, isCallExpression, Node, ScriptTarget } from "typescript";
 import { CodeLens, CodeLensProvider, Range } from "vscode";
@@ -31,8 +30,8 @@ export const WebpackCodeLensProvider: CodeLensProvider = {
             if (isCallExpression(node) && finds.includes(type = node.expression.getText())) {
                 const args = node.arguments.map((a) => {
                     return tryParseStringLiteral(a)
-                        ?? tryParseRegularExpressionLiteral(a)
-                        ?? tryParseFunction(document, a);
+                      ?? tryParseRegularExpressionLiteral(a)
+                      ?? tryParseFunction(document.fileName, a);
                 });
 
                 const range = new Range(document.positionAt(node.getStart()), document.positionAt(node.getEnd()));

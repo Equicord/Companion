@@ -23,12 +23,20 @@
 
 # 0.1.4
 
-- Minor Updates & Bug Fixes aswell as support for the equicordplugins dir
+TODO: write notes
 
-# 0.1.5
+# 0.2.1
 
-- More Minor Updates & Bug Fixes
+Added diagnostics for patches and finds
 
-# 2025.8.3
+# 0.2.2
 
-- Every update is either a bug fix or overhaul
+Minor bugfixes for new bundler settings
+
+# 0.2.3
+
+Added a live patch helper, make sure to update the plugin as well, as things will break without it
+
+# 0.2.4
+
+Added hover on intl keys and minor bugfixes

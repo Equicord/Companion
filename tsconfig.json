@@ -32,6 +32,7 @@
             "@tests/*": ["./src/tests/*"]
         }
     },
-    // ingore our webview
-    "exclude": ["src/webview", "assets/**"]
+    "include": ["src", "eslint.config.mts"],
+    // ignore our webview
+    "exclude": ["assets/**", "packages"]
 }

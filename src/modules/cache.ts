@@ -1,15 +1,14 @@
-import { WebpackAstParser } from "@ast/webpack";
-import { format } from "@modules/format";
 import { outputChannel } from "@modules/logging";
 import { BufferedProgressBar, exists, getCurrentFolder, isDirectory, ProgressBar, SecTo } from "@modules/util";
+import { Format } from "@sadan4/devtools-pretty-printer";
 import { sendAndGetData } from "@server";
-
-import { formatModule } from "./util";
+import { compareVersions, SemVerVersion } from "@vencord-companion/shared/util";
+import { formatModule, ModuleDep, WebpackAstParser } from "@vencord-companion/webpack-ast-parser";
 
 import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { join, resolve } from "path";
 
-import { ProgressLocation, Uri, window } from "vscode";
+import { ProgressLocation, window } from "vscode";
 
 class _ModuleCache {
     folder: string;
@@ -31,14 +30,16 @@ class _ModuleCache {
         return join(this.workspaceFolder, this.folder);
     }
 
-    constructor({ folder = ".modules", baseFolder }: { folder?: string;
-        baseFolder?: string; }) {
+    constructor({ folder = ".modules", baseFolder }: {
+        folder?: string;
+        baseFolder?: string;
+    }) {
         this.baseFolder = baseFolder;
         this.folder = folder;
     }
 
-    public getModuleURI(id: string) {
-        return Uri.file(this.getModulePath(id));
+    public getModuleURL(id: string): URL {
+        return new URL(`file://${this.getModulePath(id)}`);
     }
 
     public getModulePath(id: string): string {
@@ -56,7 +57,7 @@ class _ModuleCache {
 
             const after = performance.now();
 
-            outputChannel.debug(`Downloading ${moduleIds.length} modules took ${after - before}ms`);
+            outputChannel.debug(`[perf] Downloading, formatting and writing ${moduleIds.length} modules took ${after - before}ms`);
         } catch (error) {
             window.showErrorMessage(`Error downloading modules:\n${String(error)}`);
             outputChannel.error(String(error));
@@ -93,18 +94,23 @@ class _ModuleCache {
         await mkdir(this.modpath);
 
         let canceled = false;
+        const modmapEntries = Object.entries(modmap);
 
-        const progress = await new ProgressBar(Object.entries(modmap).length, "Writing modules", () => {
+        const progress = await new ProgressBar(modmapEntries.length, "Writing modules", () => {
             canceled = true;
         })
             .start();
 
-        for (const [id, text] of Object.entries(modmap)) {
+        const before = performance.now();
+
+        for (const [id, text] of modmapEntries) {
             if (canceled) {
                 throw new Error("Module writing canceled");
             }
             try {
-                // FIXME: check if id has any invalid/malicious characters
+                if (id.includes("/") || id.includes("\\")) {
+                    throw new Error(`Invalid module ID: ${id}`);
+                }
                 await writeFile(join(this.modpath, `${id}.js`), text);
                 progress.increment();
             } catch (error) {
@@ -112,6 +118,10 @@ class _ModuleCache {
                 throw error;
             }
         }
+
+        const after = performance.now();
+
+        outputChannel.debug(`[perf] Writing ${modmapEntries.length} modules took ${after - before}ms`);
     }
 
     private async formatModules(modmap: Record<string, string>) {
@@ -128,13 +138,13 @@ class _ModuleCache {
             if (canceled) {
                 throw new Error("Module formatting canceled");
             }
-            modmap[id] = format(formatModule(text, id));
+            modmap[id] = Format(formatModule(text, id));
             await progress.increment();
         }
 
         const endTime = performance.now();
 
-        outputChannel.debug(`Formatting modules took ${endTime - startTime}ms`);
+        outputChannel.debug(`[perf] Formatting modules took ${endTime - startTime}ms`);
     }
 
     private async downloadModuleText(moduleIDs: string[]) {
@@ -146,6 +156,7 @@ class _ModuleCache {
             .start();
 
         const res: Record<string, string> = {};
+        const before = performance.now();
 
         for (const id of moduleIDs) {
             if (isCancelled) {
@@ -174,6 +185,11 @@ class _ModuleCache {
             }
             res[id] = text;
         }
+
+        const after = performance.now();
+
+        outputChannel.debug(`[perf] Downloading ${moduleIDs.length} modules took ${after - before}ms`);
+
         return res;
     }
 
@@ -192,33 +208,43 @@ class _ModuleCache {
 const MODULE_ID_FILE_REGEX = /(\d+)\.js/;
 
 type DepsGeneratorOpts =
-  | {
-      modmap: Record<string, string>;
+  & {
+      noCache?: boolean;
   }
-  | {
-      fromDisk: true;
-      folder?: string;
-      baseFolder?: string;
-  };
+  & (
+    | {
+        modmap: Record<string, string>;
+    }
+    | {
+        fromDisk: true;
+        folder?: string;
+        baseFolder?: string;
+    }
+    );
 
-type AllDeps = Record<string, {
-    /**
-     * the modules that require this module syncranously
-     */
-    syncUses: string[];
-    /**
-     * the modules that require this module lazily
-     */
-    lazyUses: string[];
-}>;
+type MainDeps = Record<string, ModuleDep>;
+
+interface KeyModules {
+    fluxDispatcherClass: [moduleId: string, exportName: string | symbol][];
+}
+
+interface CacheData {
+    companionVersion: SemVerVersion;
+    mainDeps: MainDeps;
+    keyModules: KeyModules;
+}
 
 export class ModuleDepManager {
-    private static modCache: AllDeps | null = null;
+    private static SYM_CJS_DEFAULT_PLACEHOLDER = "SYMBOL(SYM_CJS_DEFAULT)";
+    static DEFAULT_FOLDER = ".modules";
+    // underscore so it's above the numbered modules
+    static CACHE_FILE_NAME = "_cache.json";
+    private static modCache: MainDeps | null = null;
+    private static keyModules: KeyModules | null = null;
     private modmap?: Record<string, string>;
     currentFolder: string;
     moduleFolder: string;
-    static DEFAULT_FOLDER = ".modules";
-    static CACHE_FILE_NAME = "cache.json";
+    useCache: boolean;
 
     public static getModDeps(moduleid: string) {
         if (this.hasModDeps()) {
@@ -231,15 +257,40 @@ export class ModuleDepManager {
         return !!this.modCache;
     }
 
-    // FIXME: setting to start caching when a webpack module is opened / when the equicord workspace is opened
+    public static hasKeyModules() {
+        return !!this.keyModules;
+    }
+
+    // FIXME: setting to start caching when a webpack module is opened / when the vencord workspace is opened
     public static async initModDeps(opts: DepsGeneratorOpts) {
-        this.modCache = await new this(opts)
-            .gererateDeps();
+        if (this.hasModDeps()) {
+            return;
+        }
+
+        const inst = new this(opts);
+        let maybeCache: CacheData | undefined;
+
+        if (inst.useCache && (maybeCache = await inst.tryReadCache())) {
+            outputChannel.info("ModuleDepManager#generateDeps: Using cached deps");
+            this.modCache = maybeCache.mainDeps;
+            this.keyModules = maybeCache.keyModules;
+            return;
+        }
+
+        let parsers: WebpackAstParser[];
+
+        [this.modCache, parsers] = await inst
+            .generateDeps();
+        this.keyModules = await inst
+            .generateKeyModules(parsers);
+
+        await inst.writeCache();
     }
 
     constructor(opts: DepsGeneratorOpts) {
         this.currentFolder = ("baseFolder" in opts && opts.baseFolder) || getCurrentFolder()!;
         this.moduleFolder = ("folder" in opts && opts.folder) || ModuleDepManager.DEFAULT_FOLDER;
+        this.useCache = !opts.noCache;
         if (this.currentFolder == null)
             throw new Error("No folder found, please make sure you are in a workspace");
         if ("modmap" in opts) {
@@ -247,57 +298,165 @@ export class ModuleDepManager {
         }
     }
 
-    public async gererateDeps(): Promise<AllDeps> {
-        // check if the deps are cached first, if so, load them
-        if (await exists(join(this.currentFolder, this.moduleFolder, ModuleDepManager.CACHE_FILE_NAME))) {
-            const file = await readFile(join(this.currentFolder, this.moduleFolder, ModuleDepManager.CACHE_FILE_NAME), "utf-8");
-            const cachedData = JSON.parse(file) as AllDeps;
+    private canonicalizeKeyModules(keyModules: KeyModules) {
+        keyModules.fluxDispatcherClass = keyModules.fluxDispatcherClass.map(([moduleId, exportName]) => {
+            if (exportName === ModuleDepManager.SYM_CJS_DEFAULT_PLACEHOLDER) {
+                exportName = WebpackAstParser.SYM_CJS_DEFAULT;
+            }
+            return [moduleId, exportName];
+        });
+    }
 
+    private async tryReadCache(): Promise<undefined | CacheData> {
+        // check if the deps are cached first, if so, load them
+        const cacheFile = join(this.currentFolder, this.moduleFolder, ModuleDepManager.CACHE_FILE_NAME);
+
+        // We don't want to use the cache in tests because we actually want to test the parsing
+        if (IS_TEST === false && this.useCache && await exists(cacheFile)) {
+            const file = await readFile(cacheFile, "utf-8");
+            const cachedData = JSON.parse(file) as CacheData;
+
+            // ignore the cache if the companion version doesn't match
+            if (!("companionVersion" in cachedData) || compareVersions(cachedData.companionVersion, SERVER_VERSION_FROM_BUILD) !== 0) {
+                console.info("Removing _cache.json generated with an old version of VencordCompanion oldVersion: ", cachedData.companionVersion);
+                rm(cacheFile)
+                    .catch((e) => {
+                        outputChannel.error(`Failed to remove invalid cache file: ${e}`);
+                    });
+                return;
+            }
+
+            this.canonicalizeKeyModules(cachedData.keyModules);
+
+            outputChannel.info("ModuleDepManager#tryReadCache: Loading deps from cache file");
             return cachedData;
         }
+    }
 
+    private async writeCache() {
+        if (!this.useCache) {
+            return;
+        }
+        if (!ModuleDepManager.hasModDeps()) {
+            throw new Error("ModuleDepManager#writeCache: No deps to write");
+        }
+
+        const cacheFile = join(this.currentFolder, this.moduleFolder, ModuleDepManager.CACHE_FILE_NAME);
+
+        const data = JSON.stringify({
+            companionVersion: SERVER_VERSION_FROM_BUILD,
+            mainDeps: ModuleDepManager.modCache!,
+            keyModules: ModuleDepManager.keyModules!,
+        } satisfies CacheData);
+
+        await writeFile(cacheFile, data, "utf-8");
+    }
+
+    private async generateDeps(): Promise<[MainDeps, WebpackAstParser[]]> {
         // FIXME: horror
-        const toRet: AllDeps = ModuleDepManager.makeDepsMap();
+        const ret: MainDeps = ModuleDepManager.makeDepsMap();
         let cancelled = false;
+        const modmap = await this.getModmap();
+        const retParsers = [] as WebpackAstParser[];
 
-        const progress = await new BufferedProgressBar(Object.entries(await this.getModmap()).length, "Parsing Modules", () => {
+        const progress = await new BufferedProgressBar(Object.entries(modmap).length, "Parsing Modules", () => {
             cancelled = true;
         })
             .start();
 
-        for (const [id, text] of Object.entries(await this.getModmap())) {
+        const start = performance.now();
+
+        for (const [id, text] of Object.entries(modmap)) {
             if (cancelled) {
                 throw new Error("canceled by user");
             }
             try {
-                const deps = new WebpackAstParser(text)
-                    .getModulesThatThisModuleRequires();
+                const parser = new WebpackAstParser(text);
 
-                for (const syncDep of deps?.sync ?? []) {
-                    toRet[syncDep].syncUses.push(id);
-                }
-                for (const lazyDep of deps?.lazy ?? []) {
-                    toRet[lazyDep].lazyUses.push(id);
+                retParsers.push(parser);
+
+                {
+                    const deps = parser.getModulesThatThisModuleRequires();
+
+                    for (const syncDep of deps?.sync ?? []) {
+                        ret[syncDep].syncUses.push(id);
+                    }
+                    for (const lazyDep of deps?.lazy ?? []) {
+                        ret[lazyDep].lazyUses.push(id);
+                    }
                 }
                 await progress.increment();
             } catch (e) {
                 progress.stop(e);
+                outputChannel.error(e);
+                window.showErrorMessage((e as Error)?.message);
                 throw e;
             }
         }
 
-        // write the deps to cache
-        const deps = JSON.stringify(toRet);
+        const end = performance.now();
 
-        writeFile(join(this.currentFolder, this.moduleFolder, ModuleDepManager.CACHE_FILE_NAME), deps, "utf-8")
-            .catch((e) => {
-                outputChannel.error(`Failed to write cached module deps to disk. Error: ${e}`);
-            });
-        return toRet;
+        outputChannel.debug(`[perf] Generating Module Dependencies took ${end - start}ms`);
+
+        return [ret, retParsers];
     }
 
-    private static makeDepsMap(): AllDeps {
-        const target = {};
+    private async generateKeyModules(parsers: WebpackAstParser[]): Promise<KeyModules> {
+        const ret: KeyModules = {
+            fluxDispatcherClass: [],
+        };
+
+        let cancelled = false;
+
+        const progress = await new BufferedProgressBar(parsers.length, "Locating Key Modules", () => {
+            cancelled = true;
+        })
+            .start();
+
+        const start = performance.now();
+
+        for (const parser of parsers) {
+            if (cancelled) {
+                throw new Error("canceled by user");
+            }
+            try {
+                {
+                    const fluxDispatcherModuleExport = parser.isFluxDispatcherModule();
+
+                    if (fluxDispatcherModuleExport != null) {
+                        if (parser.moduleId == null) {
+                            throw new Error("Module ID is not set for module");
+                        }
+                        ret.fluxDispatcherClass.push([parser.moduleId, fluxDispatcherModuleExport]);
+
+                        (await parser.getAllReExportsForExport(fluxDispatcherModuleExport))
+                            .filter(([, exportChain]) => exportChain.length === 1)
+                            .forEach(([moduleId, [exportName]]) => {
+                                if (typeof exportName === "symbol") {
+                                    exportName = ModuleDepManager.SYM_CJS_DEFAULT_PLACEHOLDER;
+                                }
+                                ret.fluxDispatcherClass.push([moduleId, exportName]);
+                            });
+                    }
+                }
+                await progress.increment();
+            } catch (e) {
+                progress.stop(e);
+                outputChannel.error(e);
+                window.showErrorMessage((e as Error)?.message);
+                throw e;
+            }
+        }
+
+        const end = performance.now();
+
+        outputChannel.debug(`[perf] Locating Key Modules took ${end - start}ms`);
+
+        return ret;
+    }
+
+    private static makeDepsMap(): MainDeps {
+        const target = {} satisfies MainDeps;
 
         return new Proxy(target, {
             get(target, prop, rec) {
@@ -306,7 +465,7 @@ export class ModuleDepManager {
                         const val = ({
                             lazyUses: [],
                             syncUses: [],
-                        } satisfies AllDeps[string]);
+                        } satisfies MainDeps[string]);
 
                         Reflect.set(target, prop, val, rec);
                         return val;

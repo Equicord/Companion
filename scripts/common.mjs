@@ -1,8 +1,9 @@
 //@ts-check
-import { commonOpts as webviewCommonOpts } from "../src/webview/scripts/common.mjs"
 import { join, relative } from "path";
 import { glob } from "glob";
 import { readFile } from "fs/promises";
+import packageJson from "../package.json" with {type: "json"};
+const { version } = packageJson;
 const sourceFiles = await glob("src/**/*.{ts,cts,mts}", {
     ignore: ["src/webview/**"]
 });
@@ -69,6 +70,10 @@ const bundleESMPlugin = {
         })
     }
 };
+const commonDefines = {
+    SERVER_VERSION_FROM_BUILD: JSON.stringify(version.split(".").map(Number)),
+    IS_TEST: "false"
+}
 /**
  * @type {import("esbuild").BuildOptions}
  */
@@ -83,6 +88,10 @@ const testOpts = {
     sourcemap: "linked",
     logLevel: "info",
     format: "cjs",
+    define: {
+        ...commonDefines,
+        IS_TEST: "true",
+    },
     plugins: [fileUrlPlugin, bundleESMPlugin],
 }
 export const testOptions = [testOpts];
@@ -98,17 +107,8 @@ export const commonOpts = {
     platform: "node",
     sourcemap: "inline",
     logLevel: "info",
+    define: {
+        ...commonDefines
+    },
     outfile: "dist/extension.js"
 }
-const webviewopts = {
-    ...webviewCommonOpts
-};
-if (!webviewopts.define || !Array.isArray(webviewopts.entryPoints))
-    throw new Error("how");
-webviewopts.entryPoints = webviewopts.entryPoints.map(x => join("src/webview", x))
-webviewopts.outdir = "./dist/webview"
-webviewopts.define.IS_DEV = "false"
-
-
-// ugly
-export const webviewOpts = webviewopts;
